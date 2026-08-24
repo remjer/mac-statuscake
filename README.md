@@ -168,3 +168,10 @@ it against a real account before any UI exists.
   for personal use on this Mac, needed before handing the app to anyone else.
 - No custom app icon design beyond the generated placeholder in
   `Scripts/generate-icon.swift`.
+
+## License
+
+MIT, see [LICENSE](LICENSE). None of [omarchy-statuscake](https://github.com/robinvanderknaap/omarchy-statuscake)'s
+code is reused here — it's the behavioural specification this was ported
+from, credited above and in the license notice as a courtesy, not because
+its own (also MIT) license requires it for a from-scratch rewrite.
