@@ -6,9 +6,10 @@ status of your [StatusCake](https://www.statuscake.com/) uptime checks. No
 code survives the port; the reference's `Model.js` is the specification for
 behaviour, rewritten here as native Swift.
 
-This is **phase 1**: the core decision logic, its test suite, and a CLI to run
-it against a real account. There is no menu bar item, popover, Keychain
-storage, or notifications yet — see "Not built yet" below.
+This is **phase 2**: the core decision logic and its test suite (phase 1),
+plus a real menu bar app with a status item, a popover check list, and
+polling. There is no Keychain-backed token storage, settings view, or
+notifications yet — see "Not built yet" below.
 
 ## Build
 
@@ -45,7 +46,33 @@ STATUSCAKE_API_TOKEN=your-token-here swift run statuscake-cli --tags prod,web --
 `--tags` takes a comma-separated list; `--match-any` matches a check carrying
 *any* of the tags instead of requiring *all* of them.
 
+## Run the menu bar app
+
+```bash
+STATUSCAKE_API_TOKEN=your-token-here swift run StatusCakeApp
+```
+
+It puts an icon in the menu bar (no Dock icon, no app switcher entry) and
+polls every 5 minutes. Interactions:
+
+| | |
+|---|---|
+| Left click | toggle a popover listing every check, down first |
+| Middle click | force a refresh |
+| Right click | open app.statuscake.com in your browser |
+| `Esc` | close the popover |
+
+Quit with Ctrl+C in the terminal for now — a Quit menu item arrives with the
+app bundle in a later phase.
+
 ## What's here
+
+`StatusCakeApp` is the menu bar app: an `NSStatusItem` (not `MenuBarExtra`,
+which cannot distinguish left, middle, and right clicks) whose button reads
+`NSApp.currentEvent` to route each click, and an `NSPopover` hosting a
+SwiftUI view of the check list via `NSHostingController`. It has no
+settings, Keychain, or notification logic of its own — it only renders what
+`StatusCakeCore` decided.
 
 `StatusCakeCore` is a pure-Foundation package with every decision the app
 makes: fetching and paginating the StatusCake API, normalizing whatever shape
@@ -61,7 +88,6 @@ it against a real account before any UI exists.
 
 ## Not built yet
 
-- Menu bar item (`NSStatusItem`), popover with the check list, polling
 - Keychain-backed token storage, a token entry flow, a settings view
 - Notifications, wake-from-sleep handling, a tag picker
 - App bundle, code signing, notarisation, launch at login
