@@ -77,7 +77,7 @@ terminal if running via `swift run`.
 The first time there's no token anywhere, the popover shows "No API token
 yet." with a button straight into settings. Paste a token there and press
 Save: it's verified against the real API before anything is written, then
-stored in the Keychain (service `com.communicatie-cockpit.mac-statuscake`,
+stored in the Keychain (service `com.remjer.mac-statuscake`,
 account `statuscake-api-token`) — never in `UserDefaults`, never logged.
 `$STATUSCAKE_API_TOKEN` still wins over the Keychain if both are set, so
 settings hides the Remove button in that case (there'd be nothing to

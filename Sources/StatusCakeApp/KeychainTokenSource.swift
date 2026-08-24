@@ -6,7 +6,7 @@ import StatusCakeCore
 /// item, one fixed service/account pair -- there is exactly one StatusCake
 /// token per user, so there is nothing to key it by.
 enum KeychainTokenStore {
-    private static let service = "com.communicatie-cockpit.mac-statuscake"
+    private static let service = "com.remjer.mac-statuscake"
     private static let account = "statuscake-api-token"
 
     static func read() -> String? {
