@@ -10,7 +10,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var escMonitor: Any?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+        // squareLength fixes a frame too narrow for the detail text next to
+        // the icon (e.g. "3/10"); variableLength lets the item grow to fit it.
+        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = statusItem.button {
             button.image = NSImage(systemSymbolName: BarIcon.unknown.sfSymbolName, accessibilityDescription: "StatusCake")
             button.image?.isTemplate = true
