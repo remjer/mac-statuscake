@@ -40,8 +40,10 @@ public struct EnvironmentTokenSource: TokenSource {
     }
 
     public func token() -> String? {
-        guard let value = environment["STATUSCAKE_API_TOKEN"], !value.isEmpty else { return nil }
-        return value
+        guard let raw = environment["STATUSCAKE_API_TOKEN"] else { return nil }
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        return trimmed
     }
 }
 

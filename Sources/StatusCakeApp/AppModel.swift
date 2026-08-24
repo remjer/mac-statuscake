@@ -55,6 +55,15 @@ final class AppModel: ObservableObject {
         tokenStatus = client.resolvedTokenStatus()
         let parameters = fetchParameters(settings)
         let result = await client.fetchChecks(tags: parameters.tags, matchAny: parameters.matchAny)
+
+        // start() cancels the previous poll task but does not wait for it;
+        // this task's own fetch may already have been in flight when that
+        // happened. Without this check, a superseded call that still
+        // resolves after a newer one would overwrite fresher state with
+        // stale data -- and could fire a duplicate notification for the
+        // same transition the newer call already reported.
+        guard !Task.isCancelled else { return }
+
         let newSummary = summarize(result)
 
         if newSummary.hasData {
@@ -85,25 +94,38 @@ final class AppModel: ObservableObject {
     /// Verifies a candidate token against the real API before storing
     /// anything -- the same guarantee the reference implementation makes,
     /// and the reason a bad paste never silently becomes "the" token.
-    func saveToken(_ candidate: String) async -> Result<Void, APIError> {
+    /// Returns `nil` on success, or a message to show the user on failure.
+    func saveToken(_ candidate: String) async -> String? {
         let trimmed = candidate.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return .failure(.noToken) }
+        guard !trimmed.isEmpty else { return APIError.noToken.message }
 
         let verifier = StatusCakeAPIClient(tokenSources: [StaticTokenSource(sourceKind: .keychain, value: trimmed)])
-        let result = await verifier.fetchChecks()
-        guard case .success = result else {
-            if case .failure(let error) = result { return .failure(error) }
-            return .failure(.network)
+        switch await verifier.fetchChecks() {
+        case .failure(let error):
+            return error.message
+        case .success:
+            break
         }
 
-        KeychainTokenStore.save(trimmed)
+        // The token is proven to work at this point; a failure from here is
+        // the Keychain's, not StatusCake's, and must not be reported as a
+        // successful save -- the settings view would clear the field and
+        // close, leaving the user to discover "no token" on the next poll
+        // with no idea why.
+        guard KeychainTokenStore.save(trimmed) else {
+            return "Verified, but could not save the token to your Keychain."
+        }
+
         start()
-        return .success(())
+        return nil
     }
 
-    func removeToken() async {
-        KeychainTokenStore.remove()
+    func removeToken() async -> String? {
+        guard KeychainTokenStore.remove() else {
+            return "Could not remove the token from your Keychain."
+        }
         start()
+        return nil
     }
 
     // MARK: - Settings

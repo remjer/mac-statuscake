@@ -92,6 +92,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // check list is up -- the same two-deep behaviour the reference's own
     // panel has.
     private func installEscMonitor() {
+        // popoverDidClose (which clears escMonitor) fires asynchronously
+        // after the close animation, so isShown can already read false
+        // before it does. Without this, re-triggering the status item in
+        // that window would install a second monitor over the first one,
+        // leaking it and leaving two Escape handlers active at once.
+        removeEscMonitor()
         escMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self, event.keyCode == 53 else { return event } // Escape
             if self.model.showingSettings {

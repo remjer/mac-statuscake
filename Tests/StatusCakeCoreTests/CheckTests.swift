@@ -17,6 +17,12 @@ struct CheckTests {
         #expect(formatUptime(Double.nan) == "—")
     }
 
+    @Test("formatUptime rounds before comparing to 100, so a value that rounds up still shows as a flat 100")
+    func formatUptimeRoundsBeforeComparing() {
+        #expect(formatUptime(99.996) == "100%")
+        #expect(formatUptime(99.994) == "99.99%")
+    }
+
     @Test("elide truncates long names with an ellipsis")
     func elideTruncates() {
         #expect(elide("a very long check name indeed", max: 10) == "a very lo…")

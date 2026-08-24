@@ -86,7 +86,11 @@ struct SettingsView: View {
             titleVisibility: .visible
         ) {
             Button("Delete", role: .destructive) {
-                Task { await model.removeToken() }
+                Task {
+                    if let message = await model.removeToken() {
+                        tokenError = message
+                    }
+                }
             }
             Button("Cancel", role: .cancel) {}
         }
@@ -97,14 +101,13 @@ struct SettingsView: View {
         isSaving = true
         tokenError = ""
         Task {
-            let result = await model.saveToken(tokenField)
+            let error = await model.saveToken(tokenField)
             isSaving = false
-            switch result {
-            case .success:
+            if let error {
+                tokenError = error
+            } else {
                 tokenField = ""
                 model.showingSettings = false
-            case .failure(let error):
-                tokenError = error.message
             }
         }
     }

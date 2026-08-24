@@ -4,10 +4,12 @@ import Foundation
 /// brand new check can legitimately have no uptime figure yet.
 public func formatUptime(_ value: Double?) -> String {
     guard let value, !value.isNaN else { return "—" }
-    // Two decimals below 100 keeps 99.99 and 99.87 distinguishable; a flat
-    // 100 reads better than 100.00.
-    if value >= 100 { return "100%" }
-    return String(format: "%.2f%%", value)
+    // Round to the precision actually displayed before comparing to 100:
+    // a raw value like 99.996 is below 100 but rounds to "100.00", which is
+    // exactly the "100.00" a flat 100 is supposed to avoid.
+    let rounded = (value * 100).rounded() / 100
+    if rounded >= 100 { return "100%" }
+    return String(format: "%.2f%%", rounded)
 }
 
 /// Truncates to `max` characters, replacing the tail with an ellipsis so a

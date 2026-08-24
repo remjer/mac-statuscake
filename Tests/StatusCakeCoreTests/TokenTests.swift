@@ -15,6 +15,15 @@ struct TokenTests {
         #expect(blank.token() == nil)
     }
 
+    @Test("EnvironmentTokenSource trims surrounding whitespace, and treats whitespace-only as absent")
+    func environmentTokenSourceTrims() {
+        let padded = EnvironmentTokenSource(environment: ["STATUSCAKE_API_TOKEN": "  abc123\n"])
+        #expect(padded.token() == "abc123")
+
+        let onlyWhitespace = EnvironmentTokenSource(environment: ["STATUSCAKE_API_TOKEN": "   "])
+        #expect(onlyWhitespace.token() == nil)
+    }
+
     @Test("resolveToken tries sources in order and reports which one won")
     func resolveTokenOrder() {
         struct AlwaysNil: TokenSource {

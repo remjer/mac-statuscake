@@ -40,9 +40,7 @@ func normalizeCheck(from value: JSONValue) -> Check? {
     guard let raw = value.objectValue else { return nil }
 
     let statusString = (raw["status"]?.looseString ?? "").lowercased()
-    let status: Check.Status = statusString == "up" || statusString == "down"
-        ? Check.Status(rawValue: statusString)!
-        : .unknown
+    let status = Check.Status(rawValue: statusString) ?? .unknown
 
     let tags: [String]
     if let array = raw["tags"]?.arrayValue {
