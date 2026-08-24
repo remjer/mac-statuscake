@@ -19,6 +19,13 @@ final class AppModel: ObservableObject {
     private let client = StatusCakeAPIClient(tokenSources: [EnvironmentTokenSource(), KeychainTokenSource()])
     private var pollTask: Task<Void, Never>?
 
+    /// The last successful poll's snapshot, for diffing against the next one.
+    /// Only ever replaced by a *successful* fetch: a transient failure must
+    /// not reset this to empty, or the next successful poll would compare
+    /// against nothing and silently drop whatever really changed while the
+    /// fetch was failing.
+    private var previousStatusMap: StatusMap = [:]
+
     var tokenStateInfo: TokenStateInfo { tokenState(summary, tokenStatus) }
     var settingsBlocked: Bool { tokenBlocksSettings(summary, tokenStatus) }
     var tokenIsRemovable: Bool { tokenRemovable(tokenStatus) }
@@ -47,7 +54,29 @@ final class AppModel: ObservableObject {
         tokenStatus = client.resolvedTokenStatus()
         let parameters = fetchParameters(settings)
         let result = await client.fetchChecks(tags: parameters.tags, matchAny: parameters.matchAny)
-        summary = summarize(result)
+        let newSummary = summarize(result)
+
+        if newSummary.hasData {
+            let current = statusMap(newSummary)
+            let transitions = diffTransitions(previous: previousStatusMap, current: current)
+            if settings.notify, let notification = notificationFor(transitions) {
+                NotificationDelivery.deliver(notification)
+            }
+            previousStatusMap = current
+        }
+
+        summary = newSummary
+    }
+
+    // MARK: - Tag picker
+
+    /// A fresh, unfiltered fetch merged into the account's distinct tags --
+    /// see `distinctTags`' own reasoning for why this must never reuse the
+    /// current (possibly tag-filtered) summary.
+    func fetchAvailableTags() async -> [String] {
+        let result = await client.fetchChecks()
+        guard case .success(let checks) = result else { return [] }
+        return distinctTags(checks)
     }
 
     // MARK: - Token entry

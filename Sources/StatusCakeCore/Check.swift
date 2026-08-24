@@ -63,6 +63,15 @@ func normalizeCheck(from value: JSONValue) -> Check? {
     )
 }
 
+/// Every distinct tag across a set of checks, sorted for a stable picker
+/// list. Callers must pass in checks from an *unfiltered* fetch: once a tag
+/// filter is applied, the API only returns matching checks, so a filtered
+/// fetch could only ever report back the tags already selected -- and a tag
+/// just deselected would disappear from the list needed to reselect it.
+public func distinctTags(_ checks: [Check]) -> [String] {
+    Array(Set(checks.flatMap(\.tags))).sorted { $0.localizedCompare($1) == .orderedAscending }
+}
+
 /// Down first (what the user opened the app for), then up, then paused;
 /// alphabetical within each group so the list does not reshuffle between
 /// refreshes when nothing has actually changed.

@@ -6,11 +6,12 @@ status of your [StatusCake](https://www.statuscake.com/) uptime checks. No
 code survives the port; the reference's `Model.js` is the specification for
 behaviour, rewritten here as native Swift.
 
-This is **phase 3**: the core decision logic and its test suite (phase 1),
-the menu bar app with a status item, popover check list, and polling (phase
-2), plus Keychain-backed token storage, a verify-before-save token entry
-flow, and a settings view. There is no notification delivery or a tag picker
-yet — see "Not built yet" below.
+This is **phase 4**: the core logic and tests (phase 1), the menu bar app
+with polling (phase 2), Keychain token storage and settings (phase 3), plus
+transition tracking, wake-from-sleep handling, and a real per-account tag
+picker. Notification *delivery* is wired up but inert until phase 5 packages
+this as a real `.app` — see "Notifications" below for why. See "Not built
+yet" for the rest.
 
 ## Build
 
@@ -78,9 +79,31 @@ account `statuscake-api-token`) — never in `UserDefaults`, never logged.
 settings hides the Remove button in that case (there'd be nothing to
 remove that would actually stop the environment variable from winning).
 
-Settings also has the refresh interval (60–3600s), a tags filter, "match any
+Settings also has the refresh interval (60–3600s), a tag picker, "match any
 tag" (only meaningful once tags are set), and a notify toggle — every
-control writes immediately, there's no separate save step for those.
+control writes immediately, there's no separate save step for those. The tag
+picker lists your account's own tags with a search box, refetched (unfiltered)
+every time settings opens, so a tag you just added in StatusCake shows up the
+next time you look.
+
+### Notifications
+
+`StatusCakeCore` decides what deserves a notification (one per refresh, never
+one per check, and never anything on the first poll after a restart); the
+app layer tracks the previous poll's snapshot and asks `notificationFor` on
+every successful refresh. Delivery itself goes through `UNUserNotificationCenter`
+— which turns out to *crash* (`bundleProxyForCurrentProcess is nil`), not
+just silently fail, when called from a binary with no real app bundle. Since
+`swift run StatusCakeApp` is still exactly that until phase 5, every call
+into `UNUserNotificationCenter` is gated behind `Bundle.main.bundleIdentifier
+!= nil` in `NotificationDelivery.swift`: the decision logic runs and is
+tested regardless, delivery itself is a deliberate no-op for now, and it
+starts working the moment this is a real `.app`.
+
+Wake-from-sleep is handled the same way the reference widget needs it:
+polling only happens while the process is awake, so on `NSWorkspace.didWakeNotification`
+the app forces an immediate refresh rather than waiting out whatever was left
+of the interval when the Mac went to sleep.
 
 ## What's here
 
@@ -107,7 +130,5 @@ it against a real account before any UI exists.
 
 ## Not built yet
 
-- Actual notification delivery, wake-from-sleep handling
-- A tag picker (settings has a plain tags text field for now, not the
-  searchable per-account tag list)
-- App bundle, code signing, notarisation, launch at login
+- App bundle, code signing, notarisation, launch at login — and, as a direct
+  consequence, actual notification delivery (see "Notifications" above)

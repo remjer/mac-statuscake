@@ -125,14 +125,7 @@ struct SettingsView: View {
     private var tagsSection: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text("Tags").font(.subheadline)
-            TextField(
-                "prod, web",
-                text: Binding(
-                    get: { model.settings.tags },
-                    set: { model.updateTags($0) }
-                )
-            )
-            .textFieldStyle(.roundedBorder)
+            TagPickerView(model: model)
 
             Toggle(
                 "Match any tag",

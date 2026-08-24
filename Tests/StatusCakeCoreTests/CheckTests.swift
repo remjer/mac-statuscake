@@ -99,4 +99,23 @@ struct CheckTests {
         let sorted = sortChecks(checks).map(\.name)
         #expect(sorted == ["Alpha", "Beta", "Yankee", "Zebra", "Middle"])
     }
+
+    @Test("distinctTags merges and sorts tags across checks, dropping duplicates")
+    func distinctTagsMergesAndSorts() {
+        func check(tags: [String]) -> Check {
+            Check(id: "x", name: "x", url: "", testType: "", status: .up, paused: false, uptime: nil, tags: tags)
+        }
+        let checks = [
+            check(tags: ["web", "prod"]),
+            check(tags: ["staging"]),
+            check(tags: ["prod"]),
+            check(tags: [])
+        ]
+        #expect(distinctTags(checks) == ["prod", "staging", "web"])
+    }
+
+    @Test("distinctTags on an empty set of checks is empty")
+    func distinctTagsEmpty() {
+        #expect(distinctTags([]) == [])
+    }
 }

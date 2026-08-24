@@ -1,6 +1,7 @@
 import AppKit
 import SwiftUI
 import StatusCakeCore
+import UserNotifications
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
@@ -31,6 +32,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         model.onUpdate = { [weak self] summary in
             self?.render(summary)
+        }
+
+        NotificationDelivery.setDelegate(self)
+        NotificationDelivery.requestAuthorization()
+
+        // Polling only runs while the process is awake; without this, a
+        // check that flipped during sleep waits out however much of the
+        // interval is left after wake instead of being caught immediately.
+        NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didWakeNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.model.forceRefresh()
+            }
         }
 
         model.start()
@@ -100,5 +115,19 @@ extension AppDelegate: NSPopoverDelegate {
         // The panel always comes back up on the check list, never wherever
         // it happened to be left.
         model.showingSettings = false
+    }
+}
+
+extension AppDelegate: UNUserNotificationCenterDelegate {
+    // With no window ever active, the default "only show it once
+    // foreground" heuristic would still show these -- .banner is set
+    // explicitly anyway so notifications are never quietly suppressed by
+    // some future window this app doesn't currently have.
+    nonisolated func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+        completionHandler([.banner, .sound])
     }
 }
