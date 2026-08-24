@@ -6,12 +6,11 @@ status of your [StatusCake](https://www.statuscake.com/) uptime checks. No
 code survives the port; the reference's `Model.js` is the specification for
 behaviour, rewritten here as native Swift.
 
-This is **phase 4**: the core logic and tests (phase 1), the menu bar app
-with polling (phase 2), Keychain token storage and settings (phase 3), plus
-transition tracking, wake-from-sleep handling, and a real per-account tag
-picker. Notification *delivery* is wired up but inert until phase 5 packages
-this as a real `.app` — see "Notifications" below for why. See "Not built
-yet" for the rest.
+This is **phase 5**, the last of the planned phases: the core logic and
+tests (phase 1), the menu bar app with polling (phase 2), Keychain token
+storage and settings (phase 3), transition tracking and the tag picker
+(phase 4), and now a real, signed `.app` bundle with launch-at-login and
+working notification delivery.
 
 ## Build
 
@@ -50,9 +49,14 @@ STATUSCAKE_API_TOKEN=your-token-here swift run statuscake-cli --tags prod,web --
 
 ## Run the menu bar app
 
+For development, straight from the package:
+
 ```bash
 STATUSCAKE_API_TOKEN=your-token-here swift run StatusCakeApp
 ```
+
+For real use, build the `.app` bundle instead (see "Build the app bundle"
+below) — notifications only work from that, not from `swift run`.
 
 It puts an icon in the menu bar (no Dock icon, no app switcher entry) and
 polls at the configured interval (5 minutes by default). Interactions:
@@ -65,8 +69,8 @@ polls at the configured interval (5 minutes by default). Interactions:
 | Cog in the popover | open settings |
 | `Esc` | leave settings, or close the popover when the check list is up |
 
-Quit with Ctrl+C in the terminal for now — a Quit menu item arrives with the
-app bundle in a later phase.
+Quit from the bottom of settings ("Quit StatusCake"), or Ctrl+C in the
+terminal if running via `swift run`.
 
 ### Setting the token
 
@@ -80,30 +84,60 @@ settings hides the Remove button in that case (there'd be nothing to
 remove that would actually stop the environment variable from winning).
 
 Settings also has the refresh interval (60–3600s), a tag picker, "match any
-tag" (only meaningful once tags are set), and a notify toggle — every
-control writes immediately, there's no separate save step for those. The tag
-picker lists your account's own tags with a search box, refetched (unfiltered)
-every time settings opens, so a tag you just added in StatusCake shows up the
-next time you look.
+tag" (only meaningful once tags are set), a notify toggle, and launch at
+login — every control writes immediately, there's no separate save step for
+those. The tag picker lists your account's own tags with a search box,
+refetched (unfiltered) every time settings opens, so a tag you just added in
+StatusCake shows up the next time you look.
 
 ### Notifications
 
 `StatusCakeCore` decides what deserves a notification (one per refresh, never
 one per check, and never anything on the first poll after a restart); the
 app layer tracks the previous poll's snapshot and asks `notificationFor` on
-every successful refresh. Delivery itself goes through `UNUserNotificationCenter`
-— which turns out to *crash* (`bundleProxyForCurrentProcess is nil`), not
-just silently fail, when called from a binary with no real app bundle. Since
-`swift run StatusCakeApp` is still exactly that until phase 5, every call
-into `UNUserNotificationCenter` is gated behind `Bundle.main.bundleIdentifier
-!= nil` in `NotificationDelivery.swift`: the decision logic runs and is
-tested regardless, delivery itself is a deliberate no-op for now, and it
-starts working the moment this is a real `.app`.
+every successful refresh. Delivery goes through `UNUserNotificationCenter`,
+which only works from a real app bundle — it *crashes*
+(`bundleProxyForCurrentProcess is nil`), not just silently fails, when called
+from a bare binary. `swift run StatusCakeApp` is exactly that, so every call
+into `UNUserNotificationCenter` stays gated behind
+`Bundle.main.bundleIdentifier != nil` in `NotificationDelivery.swift`; run the
+built `.app` (below) to get real notifications.
 
 Wake-from-sleep is handled the same way the reference widget needs it:
 polling only happens while the process is awake, so on `NSWorkspace.didWakeNotification`
 the app forces an immediate refresh rather than waiting out whatever was left
 of the interval when the Mac went to sleep.
+
+### Launch at login
+
+The toggle in settings uses `SMAppService.mainApp` (unlike notifications,
+this works fine even from an unbundled binary — it'll register a login item
+pointing at whatever path is currently running). Only flip it on from the
+installed `.app` in `/Applications`; toggling it on while running via
+`swift run` registers a login item pointing at a `.build/` path that breaks
+on the next rebuild.
+
+## Build the app bundle
+
+```bash
+./Scripts/build-app.sh
+cp -R .build/StatusCake.app /Applications/
+```
+
+Produces `.build/StatusCake.app`: a real bundle with `Info.plist`
+(`LSUIElement` so it never shows a Dock icon), an icon
+(`Scripts/generate-icon.swift` — a green circle with a checkmark, the same
+glyph the bar uses for "all up"), and a code signature.
+
+**Signing:** no Developer ID Application certificate exists for this project
+yet — only an "Apple Development" one, which is meant for running on your
+own registered devices, not for handing the app to someone else. The script
+defaults to ad-hoc signing (`--sign -`), which is enough to run on this Mac;
+Gatekeeper will still warn once on first launch since it isn't notarized.
+Sharing this with other people later needs a paid Apple Developer Program
+membership, a Developer ID Application certificate, and `notarytool`
+credentials — set `SIGN_IDENTITY` and `NOTARIZE_PROFILE` when running the
+script once those exist; nothing else about the build changes.
 
 ## What's here
 
@@ -128,7 +162,9 @@ Keychain, or a timer — see `Sources/StatusCakeCore` and its tests in
 `statuscake-cli` is a thin executable over that package, useful for exercising
 it against a real account before any UI exists.
 
-## Not built yet
+## Known limitations
 
-- App bundle, code signing, notarisation, launch at login — and, as a direct
-  consequence, actual notification delivery (see "Notifications" above)
+- No Developer ID signing or notarisation yet (see "Signing" above) — fine
+  for personal use on this Mac, needed before handing the app to anyone else.
+- No custom app icon design beyond the generated placeholder in
+  `Scripts/generate-icon.swift`.

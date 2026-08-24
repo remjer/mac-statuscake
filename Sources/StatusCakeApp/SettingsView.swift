@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 import StatusCakeCore
 
@@ -23,7 +24,10 @@ struct SettingsView: View {
                         refreshSection
                         tagsSection
                         notifySection
+                        launchAtLoginSection
                     }
+                    Divider()
+                    quitSection
                 }
                 .padding()
             }
@@ -156,5 +160,23 @@ struct SettingsView: View {
                 set: { model.updateNotify($0) }
             )
         )
+    }
+
+    private var launchAtLoginSection: some View {
+        Toggle(
+            "Launch at login",
+            isOn: Binding(
+                get: { model.launchAtLoginEnabled },
+                set: { model.updateLaunchAtLogin($0) }
+            )
+        )
+    }
+
+    private var quitSection: some View {
+        Button("Quit StatusCake") {
+            NSApp.terminate(nil)
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(.secondary)
     }
 }

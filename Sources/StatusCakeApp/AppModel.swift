@@ -13,6 +13,7 @@ final class AppModel: ObservableObject {
     @Published private(set) var tokenStatus: TokenStatus = .none
     @Published var settings: Settings = SettingsStore.load()
     @Published var showingSettings = false
+    @Published private(set) var launchAtLoginEnabled: Bool = LaunchAtLogin.isEnabled
 
     var onUpdate: ((Summary) -> Void)?
 
@@ -130,5 +131,10 @@ final class AppModel: ObservableObject {
     func updateNotify(_ value: Bool) {
         SettingsStore.setNotify(value)
         settings = SettingsStore.load()
+    }
+
+    func updateLaunchAtLogin(_ value: Bool) {
+        LaunchAtLogin.setEnabled(value)
+        launchAtLoginEnabled = LaunchAtLogin.isEnabled
     }
 }
