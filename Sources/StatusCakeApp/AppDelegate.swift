@@ -27,7 +27,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         popover = NSPopover()
         popover.behavior = .transient
         popover.delegate = self
-        popover.contentViewController = NSHostingController(rootView: StatusListView(model: model))
+        popover.contentViewController = NSHostingController(rootView: PopoverContentView(model: model))
 
         model.onUpdate = { [weak self] summary in
             self?.render(summary)
@@ -72,10 +72,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // layer-shell popup does not otherwise see Esc unless something asks for
     // key events -- see the reference's own notes on this exact pitfall on
     // Linux; AppKit's local event monitor is the macOS equivalent fix.
+    //
+    // Esc means "go back" while settings is open, and "close" while the
+    // check list is up -- the same two-deep behaviour the reference's own
+    // panel has.
     private func installEscMonitor() {
         escMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            guard event.keyCode == 53 else { return event } // Escape
-            self?.popover.performClose(nil)
+            guard let self, event.keyCode == 53 else { return event } // Escape
+            if self.model.showingSettings {
+                self.model.showingSettings = false
+            } else {
+                self.popover.performClose(nil)
+            }
             return nil
         }
     }
@@ -89,5 +97,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 extension AppDelegate: NSPopoverDelegate {
     func popoverDidClose(_ notification: Notification) {
         removeEscMonitor()
+        // The panel always comes back up on the check list, never wherever
+        // it happened to be left.
+        model.showingSettings = false
     }
 }

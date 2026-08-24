@@ -22,6 +22,10 @@ struct StatusListView: View {
             Text("StatusCake").font(.headline)
             Spacer()
             Text(counts).foregroundStyle(.secondary)
+            Button(action: { model.showingSettings = true }) {
+                Image(systemName: "gearshape")
+            }
+            .buttonStyle(.plain)
         }
         .padding()
     }
@@ -35,7 +39,21 @@ struct StatusListView: View {
 
     @ViewBuilder
     private var content: some View {
-        if let error = model.summary.error {
+        // The one error the user can fix from here gets a button straight
+        // into settings, rather than just repeating the fetch failure they
+        // already know about (they never set up a token, or it stopped
+        // working).
+        if needsToken(model.summary) || tokenRejected(model.summary) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(needsToken(model.summary) ? "No API token yet." : "StatusCake rejected the token.")
+                    .foregroundStyle(.secondary)
+                Button(needsToken(model.summary) ? "Set one up →" : "Replace the token →") {
+                    model.showingSettings = true
+                }
+                .buttonStyle(.plain)
+            }
+            .padding()
+        } else if let error = model.summary.error {
             Text(error.message)
                 .foregroundStyle(.secondary)
                 .padding()
